@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProSheet AI - Final Stable Professional</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #1a73e8; --success: #0f9d58; --danger: #d93025;
+            --border: #dadce0; --bg: #f8f9fa; --text: #3c4043;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Roboto, Arial, sans-serif; height: 100vh; display: flex; flex-direction: column; background: #fff; overflow: hidden; }
+
+        /* Header UI */
+        .app-bar { background: #fff; border-bottom: 1px solid var(--border); padding: 8px 20px; display: flex; align-items: center; justify-content: space-between; z-index: 100; }
+        .logo { font-size: 18px; font-weight: bold; color: var(--success); display: flex; align-items: center; gap: 8px; }
+        .nav-tools { display: flex; gap: 8px; }
+        .btn { padding: 7px 14px; border-radius: 4px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 12px; font-weight: 500; display: flex; align-items: center; gap: 6px; transition: 0.1s; }
+        .btn:hover { background: var(--bg); border-color: #bbb; }
+        .btn-blue { background: var(--primary); color: white; border: none; }
+        .btn-green { background: var(--success); color: white; border: none; }
+
+        /* Table Area */
+        .grid-container { flex-grow: 1; overflow: auto; position: relative; border-top: 1px solid var(--border); }
+        table { border-collapse: collapse; width: 100%; table-layout: auto; }
+        thead th { position: sticky; top: 0; background: #f1f3f4; z-index: 50; border: 1px solid var(--border); padding: 0; font-size: 13px; font-weight: 600; }
+        .th-content { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; cursor: default; }
+        .filter-trigger { cursor: pointer; padding: 2px 5px; border-radius: 3px; color: #5f6368; font-size: 10px; }
+        .filter-trigger:hover { background: #dadce0; color: #1a73e8; }
+        td { border: 1px solid var(--border); padding: 8px 12px; font-size: 13px; white-space: nowrap; }
+        tr:hover td { background-color: #e8f0fe !important; }
+        .row-num { background: #f1f3f4; width: 45px; text-align: center; color: #666; font-size: 11px; border: 1px solid var(--border); position: sticky; left: 0; z-index: 51; }
+
+        /* Filter Menu */
+        .filter-menu { position: fixed; background: white; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 35px rgba(0,0,0,0.2); z-index: 10000; width: 260px; display: none; overflow: hidden; }
+        .menu-header { padding: 12px; background: #f8f9fa; border-bottom: 1px solid #eee; }
+        .menu-item { padding: 8px 15px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 10px; }
+        .menu-item:hover { background: #f1f3f4; }
+        .filter-actions { display: flex; justify-content: space-between; padding: 8px 15px; font-size: 11px; background: #fff; }
+        .filter-actions a { color: var(--primary); text-decoration: none; font-weight: bold; }
+        .checklist-container { max-height: 200px; overflow-y: auto; border-top: 1px solid #eee; background: #fff; }
+        .filter-row-item { display: flex; align-items: center; padding: 8px 15px; border-bottom: 1px solid #f9f9f9; cursor: pointer; transition: 0.15s; font-size: 13px; }
+        .filter-row-item:hover { background: #eef6ff; }
+        .filter-row-item input { margin-right: 12px; transform: scale(1.1); pointer-events: none; }
+        .menu-footer { padding: 10px; border-top: 1px solid #eee; text-align: right; background: #f8f9fa; display: flex; justify-content: flex-end; gap: 8px; }
+
+        /* Modals */
+        .modal-bg { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 12px; width: 520px; z-index: 2001; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+        .modal-h { padding: 20px 24px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 18px; }
+        .modal-b { padding: 24px; max-height: 450px; overflow-y: auto; }
+        .modal-f { padding: 15px 24px; border-top: 1px solid var(--border); text-align: right; background: #fafafa; }
+        
+        .pro-list-box { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+        .pro-item { display: flex; align-items: center; padding: 10px 15px; border-bottom: 1px solid #f1f1f1; cursor: pointer; transition: 0.2s; font-size: 13px; }
+        .pro-item:hover { background: #eef6ff; }
+        .pro-item input { margin-right: 15px; transform: scale(1.2); pointer-events: none; }
+
+        .comp-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .comp-row select { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        .del-comp { color: var(--danger); cursor: pointer; font-weight: bold; font-size: 16px; padding: 0 5px; }
+
+        .tab-bar { background: #f1f3f4; border-top: 1px solid var(--border); display: flex; height: 35px; }
+        .tab { padding: 0 20px; cursor: pointer; font-size: 12px; display: flex; align-items: center; border-right: 1px solid var(--border); }
+        .tab.active { background: white; color: var(--primary); font-weight: 600; border-top: 3px solid var(--primary); }
+        .pill { padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 10px; color: white; }
+        .pill-match { background: var(--success); }
+        .pill-error { background: var(--danger); }
+        #toast { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 8px 25px; border-radius: 20px; font-size: 13px; display: none; z-index: 3000; }
+    </style>
+</head>
+<body>
+
+    <div class="app-bar">
+        <div class="logo">📊 ProSheet AI</div>
+        <div class="nav-tools">
+            <input type="file" id="xlInp" hidden>
+            <button class="btn btn-green" onclick="document.getElementById('xlInp').click()">+ Upload Excel</button>
+            <button class="btn btn-blue" onclick="openM('xlModal')">XLOOKUP</button>
+            <button class="btn btn-blue" onclick="openCompareM()">Compare</button>
+            <button class="btn" onclick="openM('dateModal')">Dates</button>
+            <button class="btn" style="color: var(--danger)" onclick="resetAll()">Reset All</button>
+            <button class="btn btn-blue" onclick="saveExcel()"><span id="dlText">Download Result</span></button>
+        </div>
+        <div style="width:180px"><input type="text" id="gSearch" placeholder="Filter rows..." onkeyup="doGSearch()" style="width:100%; padding:7px 15px; border-radius:20px; border:1px solid var(--border); outline:none; font-size:12px; background:var(--bg)"></div>
+    </div>
+
+    <div class="grid-container">
+        <table id="mainTable">
+            <thead id="gh"></thead>
+            <tbody id="gb"></tbody>
+        </table>
+    </div>
+
+    <div id="filterMenu" class="filter-menu" onclick="event.stopPropagation()">
+        <div class="menu-header">
+            <div class="menu-item" id="sortAsc">🔼 Sort Small to Large</div>
+            <div class="menu-item" id="sortDesc">🔽 Sort Large to Small</div>
+            <div style="margin-top:10px">
+                <input type="text" id="menuFilterSearch" placeholder="Search values..." onkeyup="searchFilterList()" style="width:100%; padding:8px; font-size:12px; border:1px solid #ddd; border-radius:4px; outline:none;">
+            </div>
+        </div>
+        <div class="filter-actions"><a href="javascript:void(0)" onclick="toggleAllFilters(true)">Select All</a><a href="javascript:void(0)" onclick="toggleAllFilters(false)">Clear All</a></div>
+        <div class="checklist-container" id="menuChecklist"></div>
+        <div class="menu-footer"><button class="btn" onclick="closeFilterMenu()">Cancel</button><button class="btn btn-blue" onclick="applyMenuFilter()">OK</button></div>
+    </div>
+
+    <div class="tab-bar" id="tabs"></div>
+    <div class="modal-bg" id="overlay" onclick="closeAll()"></div>
+
+    <!-- Modals -->
+    <div class="modal" id="compModal"><div class="modal-h">Multi Column Match</div><div class="modal-b"><div id="compListContainer"></div><button class="btn" onclick="addCompRow()" style="margin-top: 10px; width: 100%; justify-content: center; border-style: dashed;">+ Add Column</button></div><div class="modal-f"><button class="btn" onclick="closeAll()">Cancel</button><button class="btn btn-blue" onclick="runComp()">Match Now</button></div></div>
+    <div class="modal" id="xlModal"><div class="modal-h">Advanced XLOOKUP</div><div class="modal-b"><div style="display:flex; gap:10px; margin-bottom:15px"><div style="flex:1"><label style="font-size:11px; font-weight:600">Source Col</label><select id="xlSrc" style="width:100%; padding:8px; border:1px solid #ddd;"></select></div><div style="flex:1"><label style="font-size:11px; font-weight:600">Target Sheet</label><select id="xlTarSheet" onchange="loadXlCols()" style="width:100%; padding:8px; border:1px solid #ddd;"></select></div></div><div style="margin-bottom:20px"><label style="font-size:11px; font-weight:600">Match Col</label><select id="xlTarMatch" style="width:100%; padding:8px; border:1px solid #ddd;"></select></div><div class="pro-list-box"><div style="padding:10px; background:#f8f9fa; border-bottom:1px solid #ddd; font-size:12px; display:flex; justify-content:space-between"><span>Return Columns</span> <a href="javascript:void(0)" onclick="selAllX(true)" style="text-decoration:none; font-weight:bold; color:var(--primary)">Select All</a></div><div class="pro-list-body" id="xlRetList" style="max-height:160px; overflow-y:auto"></div></div></div><div class="modal-f"><button class="btn" onclick="closeAll()">Cancel</button><button class="btn btn-blue" onclick="runXl()">Apply XLOOKUP</button></div></div>
+    <div class="modal" id="dateModal"><div class="modal-h">Date Formatter</div><div class="modal-b"><div style="margin-bottom:15px"><label style="font-size:12px; font-weight:600">Target Column:</label><select id="dtCol" style="width:100%; padding:8px;"></select></div><div><label style="font-size:12px; font-weight:600">Format:</label><select id="dtType" style="width:100%; padding:8px;"><option value="1">29-May-2026</option><option value="2">29-05-2026</option><option value="3">29.05.26</option></select></div></div><div class="modal-f"><button class="btn" onclick="closeAll()">Cancel</button><button class="btn btn-blue" onclick="runDt()">Apply</button></div></div>
+
+    <div id="toast"></div>
+
+    <script>
+        let db = {}; let originalDb = {}; let curS = "";
+        let activeFilterCol = -1; let activeViewData = [];
+
+        function cleanValue(val) {
+            if (val === null || val === undefined || String(val).toLowerCase().trim() === "null" || val === 9559597.04) return "";
+            if (val instanceof Date) {
+                let d = String(val.getDate()).padStart(2, '0'), m = String(val.getMonth() + 1).padStart(2, '0'), y = String(val.getFullYear()).slice(-2);
+                return `${d}-${m}-${y}`;
+            }
+            return val;
+        }
+
+        document.getElementById('xlInp').addEventListener('change', function(e) {
+            const f = e.target.files[0];
+            const r = new FileReader();
+            r.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const wb = XLSX.read(data, { type: 'array', cellDates: true });
+                db = {}; originalDb = {};
+                wb.SheetNames.forEach(n => {
+                    const raw = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1 });
+                    const clean = raw.map(row => row.map(cell => cleanValue(cell))).filter(row => row.some(cell => cell !== ""));
+                    db[n] = JSON.parse(JSON.stringify(clean));
+                    originalDb[n] = JSON.parse(JSON.stringify(clean));
+                });
+                curS = wb.SheetNames[0]; renderT(); renderTabs(); showMsg("Excel Uploaded!");
+            };
+            r.readAsArrayBuffer(f);
+        });
+
+        // --- CRITICAL FIX: Smart Column Alignment ---
+        function renderT(customData = null) {
+            const data = customData || db[curS];
+            activeViewData = data;
+            const head = document.getElementById('gh'), body = document.getElementById('gb');
+            if(!data || data.length === 0) return;
+
+            const headers = data[0];
+            head.innerHTML = `<tr><th class="row-num">#</th>` + headers.map((h, i) => `<th><div class="th-content"><span>${h || ''}</span><span class="filter-trigger" onclick="openFilterMenu(event, ${i})">▼</span></div></th>`).join('') + `</tr>`;
+
+            let bRows = "";
+            for(let i=1; i<data.length; i++) {
+                bRows += `<tr><td class="row-num">${i}</td>`;
+                // Iterate by HEADERS length, not row length to prevent shifting
+                for(let j=0; j < headers.length; j++) {
+                    let v = data[i][j];
+                    let displayValue = (String(v).toLowerCase().trim() === "null" || v === undefined) ? "" : v;
+                    
+                    if(displayValue === "MATCH") displayValue = `<span class="pill pill-match">MATCH</span>`;
+                    else if(displayValue === "NOT MATCH") displayValue = `<span class="pill pill-error">NOT MATCH</span>`;
+                    
+                    bRows += `<td>${displayValue}</td>`;
+                }
+                bRows += `</tr>`;
+            }
+            body.innerHTML = bRows;
+            document.getElementById('dlText').innerText = (customData && customData.length !== db[curS].length) ? "Download Filtered" : "Download Result";
+        }
+
+        // Row Normalizer: Ensures every row has the same number of cells as the header
+        function normalizeRows(sheetName) {
+            const data = db[sheetName];
+            const maxCols = data[0].length;
+            for(let i=1; i<data.length; i++) {
+                while(data[i].length < maxCols) data[i].push("");
+            }
+        }
+
+        function openFilterMenu(e, colIdx) {
+            e.stopPropagation(); activeFilterCol = colIdx;
+            const menu = document.getElementById('filterMenu'); menu.style.display = 'block';
+            let x = e.clientX, y = e.clientY;
+            if (x + 260 > window.innerWidth) x = window.innerWidth - 280;
+            if (y + 400 > window.innerHeight) y = window.innerHeight - 420;
+            menu.style.left = x + 'px'; menu.style.top = y + 'px';
+            document.getElementById('sortAsc').onclick = () => sortData(colIdx, 'asc');
+            document.getElementById('sortDesc').onclick = () => sortData(colIdx, 'desc');
+            const uniqueValues = [...new Set(db[curS].slice(1).map(r => String(r[colIdx] || "")))].sort();
+            const list = document.getElementById('menuChecklist');
+            list.innerHTML = uniqueValues.map(v => `<div class="filter-row-item" onclick="toggleFilterCheck(this)"><input type="checkbox" checked class="menu-chk" value="${v}"> <span>${v === "" ? "(Blanks)" : v}</span></div>`).join('');
+            document.getElementById('menuFilterSearch').value = "";
+        }
+        function toggleFilterCheck(el) { el.querySelector('input').checked = !el.querySelector('input').checked; }
+        function toggleAllFilters(check) { document.querySelectorAll('.menu-chk').forEach(c => c.checked = check); }
+        function searchFilterList() {
+            const q = document.getElementById('menuFilterSearch').value.toLowerCase();
+            document.querySelectorAll('.filter-row-item').forEach(item => { item.style.display = item.innerText.toLowerCase().includes(q) ? 'flex' : 'none'; });
+        }
+        function applyMenuFilter() {
+            const checkedValues = Array.from(document.querySelectorAll('.menu-chk:checked')).map(c => c.value);
+            const filtered = [db[curS][0], ...db[curS].slice(1).filter(r => checkedValues.includes(String(r[activeFilterCol] || "")) && r.some(cell => cell !== ""))];
+            renderT(filtered); closeFilterMenu();
+        }
+        function sortData(idx, order) {
+            const header = db[curS][0], rows = db[curS].slice(1);
+            rows.sort((a, b) => {
+                let v1 = a[idx] || "", v2 = b[idx] || "";
+                if(!isNaN(v1) && !isNaN(v2) && v1 !== "" && v2 !== "") return order === 'asc' ? v1 - v2 : v2 - v1;
+                return order === 'asc' ? String(v1).localeCompare(String(v2)) : String(v2).localeCompare(String(v1));
+            });
+            db[curS] = [header, ...rows]; renderT(); closeFilterMenu();
+        }
+        function closeFilterMenu() { document.getElementById('filterMenu').style.display = 'none'; }
+        window.onclick = function() { closeFilterMenu(); };
+
+        function openCompareM() { if(!curS) return alert("Upload Excel!"); document.getElementById('compListContainer').innerHTML = ""; openM('compModal'); addCompRow(); addCompRow(); }
+        function addCompRow() {
+            const container = document.getElementById('compListContainer'); const row = document.createElement('div'); row.className = 'comp-row';
+            const options = db[curS][0].map((v, i) => `<option value="${i}">${v || 'Col '+i}</option>`).join('');
+            row.innerHTML = `<select class="comp-sel">${options}</select> <span class="del-comp" onclick="this.parentElement.remove()">×</span>`;
+            container.appendChild(row);
+        }
+        function runComp() {
+            const indices = Array.from(document.querySelectorAll('.comp-sel')).map(s => parseInt(s.value));
+            if(indices.length < 2) return alert("Select at least 2 columns!");
+            const data = db[curS]; 
+            data[0].push("Comparison Result"); 
+            normalizeRows(curS); // Ensure rows are extended before filling
+            const resIdx = data[0].length - 1;
+
+            for(let i = 1; i < data.length; i++) {
+                const vals = indices.map(idx => String(data[i][idx] || "").trim().toLowerCase());
+                const allMatch = vals.every(v => v === vals[0] && v !== "");
+                data[i][resIdx] = allMatch ? "MATCH" : (vals.every(v => v === "") ? "" : "NOT MATCH");
+            }
+            renderT(); closeAll();
+        }
+
+        function openM(id) { document.getElementById('overlay').style.display = 'block'; document.getElementById(id).style.display = 'block'; 
+            if(id=='xlModal'){ const h = db[curS][0].map((v, i) => `<option value="${i}">${v || 'Col '+i}</option>`).join(''); document.getElementById('xlSrc').innerHTML = h; document.getElementById('xlTarSheet').innerHTML = Object.keys(db).map(n => `<option value="${n}">${n}</option>`).join(''); loadXlCols(); }
+            if(id=='dateModal') document.getElementById('dtCol').innerHTML = db[curS][0].map((v, i) => `<option value="${i}">${v || 'Col '+i}</option>`).join('');
+        }
+        function closeAll() { document.getElementById('overlay').style.display = 'none'; document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
+        function loadXlCols() {
+            const s = document.getElementById('xlTarSheet').value, h = db[s][0];
+            document.getElementById('xlTarMatch').innerHTML = h.map((v, i) => `<option value="${i}">${v || 'Col '+i}</option>`).join('');
+            document.getElementById('xlRetList').innerHTML = h.map((v, i) => `<div class="pro-item" onclick="toggleFilterCheck(this)"><input type="checkbox" class="xl-ret-chk" value="${i}" onclick="event.stopPropagation()"> <span>${v || 'Col '+i}</span></div>`).join('');
+        }
+        function selAllX(b) { document.querySelectorAll('.xl-ret-chk').forEach(c => c.checked = b); }
+        function runXl() {
+            const sIdx = document.getElementById('xlSrc').value, tS = document.getElementById('xlTarSheet').value, tM = document.getElementById('xlTarMatch').value, fIdx = Array.from(document.querySelectorAll('.xl-ret-chk:checked')).map(c => parseInt(c.value));
+            const sData = db[curS], tData = db[tS];
+            
+            fIdx.forEach(idx => sData[0].push("Found: " + (tData[0][idx] || 'Data')));
+            normalizeRows(curS); // Fix alignment
+            const startIdx = sData[0].length - fIdx.length;
+
+            for(let i=1; i<sData.length; i++) {
+                const val = String(sData[i][sIdx] || "").trim().toLowerCase();
+                const match = tData.find((r, idx) => idx > 0 && String(r[tM] || "").trim().toLowerCase() === val);
+                fIdx.forEach((idx, k) => { sData[i][startIdx+k] = match ? cleanValue(match[idx]) : ""; });
+            }
+            renderT(); closeAll();
+        }
+        function runDt() {
+            const c = document.getElementById('dtCol').value, t = document.getElementById('dtType').value, data = db[curS];
+            const mos = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+            for(let i=1; i<data.length; i++){
+                let d = new Date(data[i][c]); if(isNaN(d.getTime())) continue;
+                let dd = String(d.getDate()).padStart(2,'0'), mm = String(d.getMonth()+1).padStart(2,'0'), y = d.getFullYear();
+                if(t=="1") data[i][c] = `${dd}-${mos[d.getMonth()]}-${y}`;
+                else if(t=="2") data[i][c] = `${dd}-${mm}-${y}`;
+                else data[i][c] = `${dd}.${mm}.${String(y).slice(-2)}`;
+            }
+            renderT(); closeAll();
+        }
+        function doGSearch() {
+            const q = document.getElementById('gSearch').value.toLowerCase();
+            const d = db[curS], f = [d[0], ...d.slice(1).filter(r => r.some(c => String(c).toLowerCase().includes(q)) && r.some(cell => cell !== ""))];
+            renderT(f);
+        }
+        function resetAll() { db[curS] = JSON.parse(JSON.stringify(originalDb[curS])); renderT(); showMsg("Reset Done!"); }
+        function renderTabs() { document.getElementById('tabs').innerHTML = Object.keys(db).map(n => `<div class="tab ${n==curS?'active':''}" onclick="switchSheet('${n}')">${n}</div>`).join(''); }
+        function switchSheet(n) { curS = n; renderTabs(); renderT(); }
+        function showMsg(m) { const t = document.getElementById('toast'); t.innerText = m; t.style.display = 'block'; setTimeout(()=>t.style.display='none', 3000); }
+        function saveExcel() {
+            const ws = XLSX.utils.aoa_to_sheet(activeViewData);
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Result");
+            XLSX.writeFile(wb, "ProSheet_Export.xlsx");
+        }
+    </script>
+</body>
+</html>
